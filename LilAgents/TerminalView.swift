@@ -57,6 +57,7 @@ class TerminalView: NSView {
     private var currentAssistantText = ""
     private var lastAssistantText = ""
     private var isStreaming = false
+    private var showingSessionMessage = false
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -146,6 +147,23 @@ class TerminalView: NSView {
         addSubview(inputField)
     }
 
+    func resetState() {
+        isStreaming = false
+        currentAssistantText = ""
+        lastAssistantText = ""
+        showingSessionMessage = false
+        textView.textStorage?.setAttributedString(NSAttributedString(string: ""))
+    }
+
+    func showSessionMessage() {
+        let t = theme
+        textView.textStorage?.setAttributedString(NSAttributedString(
+            string: "  \u{2726} new session\n",
+            attributes: [.font: t.font, .foregroundColor: t.accentColor]
+        ))
+        showingSessionMessage = true
+    }
+
     // MARK: - Input
 
     @objc private func inputSubmitted() {
@@ -155,6 +173,10 @@ class TerminalView: NSView {
 
         if handleSlashCommand(text) { return }
 
+        if showingSessionMessage {
+            textView.textStorage?.setAttributedString(NSAttributedString(string: ""))
+            showingSessionMessage = false
+        }
         appendUser(text)
         isStreaming = true
         currentAssistantText = ""
@@ -173,7 +195,7 @@ class TerminalView: NSView {
 
         switch cmd {
         case "/clear":
-            textView.textStorage?.setAttributedString(NSAttributedString(string: ""))
+            resetState()
             onClearRequested?()
             return true
 

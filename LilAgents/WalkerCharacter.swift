@@ -381,7 +381,16 @@ class WalkerCharacter {
         titleLabel.frame = NSRect(x: 12, y: 6, width: popoverWidth - 80, height: 16)
         titleBar.addSubview(titleLabel)
 
-        // Copy button in title bar (icon only)
+        let refreshBtn = NSButton(frame: NSRect(x: popoverWidth - 48, y: 5, width: 16, height: 16))
+        refreshBtn.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: "Refresh")
+        refreshBtn.imageScaling = .scaleProportionallyDown
+        refreshBtn.bezelStyle = .inline
+        refreshBtn.isBordered = false
+        refreshBtn.contentTintColor = t.titleText.withAlphaComponent(0.75)
+        refreshBtn.target = self
+        refreshBtn.action = #selector(refreshSessionFromButton)
+        titleBar.addSubview(refreshBtn)
+
         let copyBtn = NSButton(frame: NSRect(x: popoverWidth - 28, y: 5, width: 16, height: 16))
         copyBtn.image = NSImage(systemSymbolName: "square.on.square", accessibilityDescription: "Copy")
         copyBtn.imageScaling = .scaleProportionallyDown
@@ -405,13 +414,29 @@ class WalkerCharacter {
             self?.session?.send(message: message)
         }
         terminal.onClearRequested = { [weak self] in
-            self?.session?.history.removeAll()
+            self?.resetSession()
         }
         container.addSubview(terminal)
 
         win.contentView = container
         popoverWindow = win
         terminalView = terminal
+    }
+
+    func resetSession() {
+        session?.terminate()
+        session = nil
+        currentStreamingText = ""
+        showingCompletion = false
+        currentPhrase = ""
+        completionBubbleExpiry = 0
+        hideBubble()
+        terminalView?.resetState()
+        terminalView?.showSessionMessage()
+        let newSession = AgentProvider.current.createSession()
+        session = newSession
+        wireSession(newSession)
+        newSession.start()
     }
 
     private func wireSession(_ session: any AgentSession, providerName: String = AgentProvider.current.displayName) {
@@ -444,11 +469,17 @@ class WalkerCharacter {
             self?.terminalView?.endStreaming()
             self?.terminalView?.appendError("\(providerName) session ended.")
         }
+
+        session.onSessionReady = { }
     }
 
     @objc func copyLastResponseFromButton() {
-        // Trigger the /copy slash command via the terminal view
         terminalView?.handleSlashCommandPublic("/copy")
+    }
+
+    @objc func refreshSessionFromButton() {
+        guard !isOnboarding else { return }
+        resetSession()
     }
 
     private func formatToolInput(_ input: [String: Any]) -> String {

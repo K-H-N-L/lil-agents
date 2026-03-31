@@ -142,8 +142,15 @@ class ClaudeSession: AgentSession {
     }
 
     func terminate() {
+        outputPipe?.fileHandleForReading.readabilityHandler = nil
+        errorPipe?.fileHandleForReading.readabilityHandler = nil
         process?.terminate()
+        process = nil
+        inputPipe = nil
+        outputPipe = nil
+        errorPipe = nil
         isRunning = false
+        isBusy = false
         pendingMessages.removeAll()
     }
 
